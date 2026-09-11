@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+calibration/
+data/
+outputs/
+.conda/

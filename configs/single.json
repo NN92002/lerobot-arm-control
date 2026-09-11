@@ -1,0 +1,20 @@
+{
+  "mode": "single",
+  "model": "so101",
+  "python": ".conda/bin/python",
+  "lerobot_path": null,
+  "fps": 30,
+  "max_relative_target": 5,
+  "robot": {
+    "id": "single_robot",
+    "ports": {
+      "single": "/dev/serial/by-id/REPLACE_robot_single"
+    }
+  },
+  "teleop": {
+    "id": "single_teleop",
+    "ports": {
+      "single": "/dev/serial/by-id/REPLACE_teleop_single"
+    }
+  }
+}

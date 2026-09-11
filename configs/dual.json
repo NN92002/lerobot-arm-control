@@ -1,0 +1,22 @@
+{
+  "mode": "dual",
+  "model": "so101",
+  "python": ".conda/bin/python",
+  "lerobot_path": null,
+  "fps": 30,
+  "max_relative_target": 5,
+  "robot": {
+    "id": "dual_robot",
+    "ports": {
+      "left": "/dev/serial/by-id/REPLACE_robot_left",
+      "right": "/dev/serial/by-id/REPLACE_robot_right"
+    }
+  },
+  "teleop": {
+    "id": "dual_teleop",
+    "ports": {
+      "left": "/dev/serial/by-id/REPLACE_teleop_left",
+      "right": "/dev/serial/by-id/REPLACE_teleop_right"
+    }
+  }
+}

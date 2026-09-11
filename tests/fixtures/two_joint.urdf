@@ -1,0 +1,5 @@
+<robot name="test_only">
+  <link name="base"/><link name="arm"/><link name="tip"/>
+  <joint name="pan" type="revolute"><parent link="base"/><child link="arm"/><axis xyz="0 0 1"/></joint>
+  <joint name="tool" type="fixed"><parent link="arm"/><child link="tip"/><origin xyz="1 0 0"/></joint>
+</robot>

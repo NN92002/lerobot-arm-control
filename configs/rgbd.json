@@ -1,0 +1,159 @@
+{
+  "mode": "dual",
+  "model": "so101",
+  "python": ".conda/bin/python",
+  "lerobot_path": null,
+  "fps": 30,
+  "max_relative_target": 5,
+  "robot": {
+    "id": "dual_robot",
+    "ports": {
+      "left": "/dev/serial/by-id/REPLACE_robot_left",
+      "right": "/dev/serial/by-id/REPLACE_robot_right"
+    }
+  },
+  "teleop": {
+    "id": "dual_teleop",
+    "ports": {
+      "left": "/dev/serial/by-id/REPLACE_teleop_left",
+      "right": "/dev/serial/by-id/REPLACE_teleop_right"
+    }
+  },
+  "task": "請改成你要示範的任務描述",
+  "server": {
+    "ssh": "itri2026@140.114.58.2",
+    "dataset_path": "/home/itri2026/lerobot_datasets",
+    "project_path": "/home/itri2026/lerobot-arm-control",
+    "checkpoint_path": "/home/itri2026/lerobot_checkpoints",
+    "auto_upload": true
+  },
+  "cameras": [
+    {
+      "name": "front",
+      "serial": "944122072848",
+      "width": 640,
+      "height": 480,
+      "fps": 30
+    }
+  ],
+  "kinematics": {
+    "left": {
+      "urdf": "REPLACE_WITH_ABSOLUTE_URDF_PATH",
+      "base_link": "base_link",
+      "tip_link": "gripper_frame_link",
+      "output_frame": "left_base",
+      "world_from_base": [
+        [
+          1,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ],
+      "joint_map": {
+        "shoulder_pan": {
+          "motor": "shoulder_pan",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        },
+        "shoulder_lift": {
+          "motor": "shoulder_lift",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        },
+        "elbow_flex": {
+          "motor": "elbow_flex",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        },
+        "wrist_flex": {
+          "motor": "wrist_flex",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        },
+        "wrist_roll": {
+          "motor": "wrist_roll",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        }
+      }
+    },
+    "right": {
+      "urdf": "REPLACE_WITH_ABSOLUTE_URDF_PATH",
+      "base_link": "base_link",
+      "tip_link": "gripper_frame_link",
+      "output_frame": "right_base",
+      "world_from_base": [
+        [
+          1,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ],
+      "joint_map": {
+        "shoulder_pan": {
+          "motor": "shoulder_pan",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        },
+        "shoulder_lift": {
+          "motor": "shoulder_lift",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        },
+        "elbow_flex": {
+          "motor": "elbow_flex",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        },
+        "wrist_flex": {
+          "motor": "wrist_flex",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        },
+        "wrist_roll": {
+          "motor": "wrist_roll",
+          "scale": 0.017453292519943295,
+          "offset": 0
+        }
+      }
+    }
+  }
+}
