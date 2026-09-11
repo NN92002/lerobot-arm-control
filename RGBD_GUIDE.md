@@ -4,7 +4,7 @@
 
 ## 正式資料流程
 
-本機只負責連接手臂／相機與錄製；伺服器設定如下：
+本機只負責連接手臂／相機與錄製；每個完整 episode 錄完後要在 GUI 選擇 `positive` 或 `negative`，伺服器設定如下：
 
 ```text
 SSH       itri2026@140.114.58.2
@@ -13,7 +13,7 @@ Checkpoint /home/itri2026/lerobot_checkpoints
 程式      /home/itri2026/lerobot-arm-control
 ```
 
-實機 GUI 每完成一個 episode，就會自動以 checksum 上傳並驗證檔案清單；驗證成功才刪除本機 episode。上傳失敗、中斷錄製與 mock 錄製都會保留本機資料。資料集名稱取自 GUI 的 output 資料夾名稱。
+實機 GUI 每完成一個 episode，會先跳出判定視窗。選擇後才以 checksum 上傳並驗證檔案清單；驗證成功才刪除本機 episode。上傳失敗、中斷錄製與 mock 錄製都會保留本機資料。`negative` episode 會上傳保存，但訓練入口會自動跳過。資料集名稱取自 GUI 的 output 資料夾名稱。
 
 已查到本機 RealSense D435I（序號 `944122072848`），已填入設定。手臂已確認為兩組 SO-101；四個串列埠與 URDF 尚待填寫；未執行實機手臂控制或正式示範訓練。
 
@@ -56,6 +56,14 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 ```
 
 錄製前請先完成校正。GUI 會實際連接相機和手臂；連接後按各組的 `Start Teleop`，確認示範動作正常，再按 `Start Recording`。每個完整 episode 會自動上傳到伺服器；不要在錄製期間手動刪除本機檔案。
+
+未完成或上傳失敗的 episode 不會上傳，可直接刪除本機資料夾。若已上傳的 episode 錄壞，先刪除伺服器副本：
+
+```bash
+./server.sh delete-episode recordings episode_000001 --yes
+```
+
+刪除後下一個 episode 會使用最小的空缺編號，不會因刪除而永久跳號。
 
 第一次使用或程式更新後，執行：
 

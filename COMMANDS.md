@@ -181,11 +181,19 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 
 使用 `configs/rgbd.json` 啟動實機 GUI 時，完整 episode 會自動上傳到
 `/home/itri2026/lerobot_datasets/<資料集名稱>/<episode>`。程式會先以 checksum 同步，
-再比對遠端檔案清單與大小；只有驗證成功才刪除本機 episode。中斷錄製、mock 錄製或上傳失敗時，本機檔案會保留。
+錄製完成後先選擇 `positive` 或 `negative`，再比對遠端檔案清單與大小；只有驗證成功才刪除本機 episode。
+中斷錄製、mock 錄製或上傳失敗時，本機檔案會保留。訓練入口只會載入 `positive` episode，
+`negative` 仍保留在伺服器供檢查。
 
 `<資料集名稱>` 是 GUI 的 output 資料夾名稱，例如 `--output data/recordings` 會上傳到
 `/home/itri2026/lerobot_datasets/recordings/`。因此同一個 output 資料夾應只保存同一種
 手臂／相機組合與同一個任務。
+
+如果確認某個已上傳 episode 錄壞，可在本機執行以下指令刪除伺服器副本；`--yes` 是必要的安全確認。刪除後，下一次錄製會優先使用最小的空缺編號：
+
+```bash
+./server.sh delete-episode recordings episode_000001 --yes
+```
 
 ```bash
 # 正式訓練請使用上面的 server.sh train，在伺服器直接讀取遠端資料。

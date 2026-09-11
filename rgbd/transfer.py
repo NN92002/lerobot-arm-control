@@ -19,7 +19,7 @@ def _remote_manifest(ssh_target, directory):
     return manifest
 
 
-def next_remote_episode_index(server, dataset_name):
+def next_remote_episode_index(server, dataset_name, local_directory=None):
     ssh_target = server.get('ssh')
     dataset_root = server.get('dataset_path')
     if not ssh_target or not dataset_root:
@@ -29,13 +29,22 @@ def next_remote_episode_index(server, dataset_name):
                f"find {shlex.quote(remote_dataset)} -mindepth 1 -maxdepth 1 -type d "
                "-name 'episode_*' -printf '%f\\n' | sort")
     result = subprocess.run(['ssh', ssh_target, command], check=True, capture_output=True, text=True)
-    indices = []
+    indices = set()
     for name in result.stdout.splitlines():
         try:
-            indices.append(int(name.removeprefix('episode_')))
+            indices.add(int(name.removeprefix('episode_')))
         except ValueError:
             continue
-    return max(indices, default=-1) + 1
+    if local_directory is not None:
+        for path in Path(local_directory).glob('episode_*'):
+            try:
+                indices.add(int(path.name.removeprefix('episode_')))
+            except ValueError:
+                continue
+    index = 0
+    while index in indices:
+        index += 1
+    return index
 
 
 def upload_episode(directory, server):

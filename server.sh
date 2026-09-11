@@ -13,6 +13,7 @@ Usage:
   ./server.sh sync <local-dataset> [remote-name]
   ./server.sh deploy
   ./server.sh train <remote-name> <checkpoint-name> [training options]
+    ./server.sh delete-episode <dataset-name> <episode-name> --yes
 
 Environment overrides:
   LEROBOT_SERVER_SSH
@@ -54,6 +55,20 @@ case "$1" in
         checkpoint_name="$3"
         shift 3
         ssh "$REMOTE_SSH" "cd '$REMOTE_PROJECT' && ./run.sh -m rgbd.train --data '$REMOTE_DATASET_ROOT/$remote_name' --output '$REMOTE_CHECKPOINT_ROOT/$checkpoint_name' $*"
+        ;;
+    delete-episode)
+        if [[ $# -ne 4 || "$4" != '--yes' ]]; then
+            echo 'Refusing to delete without the final --yes confirmation.' >&2
+            usage >&2
+            exit 2
+        fi
+        remote_name="$2"
+        episode_name="$3"
+        [[ "$remote_name" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid dataset name" >&2; exit 2; }
+        [[ "$episode_name" =~ ^episode_[0-9]{6}$ ]] || { echo "Invalid episode name" >&2; exit 2; }
+        remote_episode="$REMOTE_DATASET_ROOT/$remote_name/$episode_name"
+        ssh "$REMOTE_SSH" "[[ -d '$remote_episode' ]] || { echo 'Episode not found: $remote_episode' >&2; exit 1; }; rm -rf -- '$remote_episode'"
+        echo "Deleted remote episode: $remote_episode"
         ;;
     *)
         usage >&2

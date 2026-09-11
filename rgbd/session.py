@@ -1,6 +1,7 @@
 """Single-owner device thread: independent connections, preview, and recording."""
 from contextlib import ExitStack
 import copy
+import json
 from pathlib import Path
 import queue
 import threading
@@ -8,6 +9,7 @@ import time
 from .camera import RealSense
 from .record import (select_config, make_arms, disconnect, validate_config, build_solvers,
                      mock_cameras, sample_frame, EpisodeWriter)
+from .common import write_json
 from .transfer import next_remote_episode_index, upload_episode
 
 
@@ -23,6 +25,7 @@ class HardwareSession:
         self.sides, self.teleop = set(), set()
         self.mock = False
         self.writer = None
+        self.pending_episode = None
         self.target_frames = 0
         self.last_recording = {'frames': 0, 'elapsed': 0., 'fps': 0.}
         self.thread = threading.Thread(target=self.loop, daemon=False)
@@ -33,7 +36,8 @@ class HardwareSession:
 
     def snapshot(self):
         return dict(sides=sorted(self.sides), cameras=list(self.cameras), teleop=sorted(self.teleop),
-                    recording=self.writer is not None, mock=self.mock)
+                    recording=self.writer is not None, label_pending=self.pending_episode is not None,
+                    mock=self.mock)
 
     def emit_state(self):
         self.events.put(('devices', self.snapshot()))
@@ -115,17 +119,10 @@ class HardwareSession:
         self.teleop.clear()
         complete = reason is None and writer.meta['frames'] == self.target_frames
         writer.close(complete, reason)
-        message = f'{"Recording complete" if complete else "Incomplete episode kept"}: {writer.directory}. Teleop stopped; devices remain connected.'
-        server = self.config.get('server', {})
-        if complete and not self.mock and server.get('auto_upload', False):
-            self.events.put(('status', f'Uploading completed episode: {writer.directory}'))
-            try:
-                remote_directory = upload_episode(writer.directory, server)
-                import shutil
-                shutil.rmtree(writer.directory)
-                message = f'Uploaded and removed local episode: {remote_directory}. Teleop stopped; devices remain connected.'
-            except Exception as error:
-                message = f'Upload failed; local episode kept at {writer.directory}: {error}'
+        message = f'{"Recording complete; choose sample label" if complete else "Incomplete episode kept"}: {writer.directory}. Teleop stopped; devices remain connected.'
+        if complete and not self.mock:
+            self.pending_episode = writer.directory
+            self.events.put(('label_required', str(writer.directory)))
         self.events.put(('status', message))
         self.emit_state()
 
@@ -147,6 +144,8 @@ class HardwareSession:
         elif operation == 'record':
             if self.writer:
                 raise ValueError('Already recording')
+            if self.pending_episode:
+                raise ValueError('Label the completed episode before recording another')
             if not self.resources:
                 raise ValueError('Connect at least one arm pair or camera first')
             cfg = self.selected()
@@ -162,12 +161,37 @@ class HardwareSession:
                 index += 1
             server = self.config.get('server', {})
             if not self.mock and server.get('auto_upload', False):
-                index = max(index, next_remote_episode_index(server, output.name))
+                index = next_remote_episode_index(server, output.name, output)
             self.writer = EpisodeWriter(output / f'episode_{index:06d}', cfg, self.cameras, self.mock, sorted(self.teleop))
             self.target_frames = frames
             self.record_started = time.monotonic()
             self.last_recording = {'frames': 0, 'elapsed': 0., 'fps': 0.}
             self.events.put(('status', f'Recording: {self.writer.directory}'))
+        elif operation == 'label':
+            if self.pending_episode is None:
+                raise ValueError('No completed episode is waiting for a label')
+            sample_label = args['sample_label']
+            if sample_label not in ('positive', 'negative'):
+                raise ValueError('sample_label must be positive or negative')
+            directory = self.pending_episode
+            meta_path = directory / 'episode.json'
+            meta = json.loads(meta_path.read_text())
+            meta['sample_label'] = sample_label
+            write_json(meta_path, meta)
+            server = self.config.get('server', {})
+            if server.get('auto_upload', False):
+                self.events.put(('status', f'{sample_label.title()} sample: {directory}. Uploading...'))
+                try:
+                    remote_directory = upload_episode(directory, server)
+                    import shutil
+                    shutil.rmtree(directory)
+                    message = f'{sample_label.title()} sample uploaded and removed locally: {remote_directory}'
+                except Exception as error:
+                    message = f'{sample_label.title()} sample upload failed; local episode kept at {directory}: {error}'
+            else:
+                message = f'{sample_label.title()} sample saved locally: {directory}'
+            self.pending_episode = None
+            self.events.put(('status', message))
         else:
             raise ValueError(f'Unknown operation: {operation}')
 

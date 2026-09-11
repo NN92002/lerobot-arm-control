@@ -13,8 +13,9 @@
 - Checkpoint：`/home/itri2026/lerobot_checkpoints`
 - 程式同步位置：`/home/itri2026/lerobot-arm-control`
 
-使用 `configs/rgbd.json` 啟動實機 GUI 時，每個完整 episode 會先暫存在本機，經
-`rsync --checksum` 上傳並驗證遠端檔案後，才刪除本機 episode。上傳失敗或中斷錄製會保留本機檔案。
+使用 `configs/rgbd.json` 啟動實機 GUI 時，每個完整 episode 錄完會先讓你選擇
+`positive` 或 `negative`，再經 `rsync --checksum` 上傳並驗證遠端檔案，最後才刪除本機 episode。
+上傳失敗或中斷錄製會保留本機檔案；訓練時會自動跳過 `negative` episode。
 
 ```bash
 cd /home/itri2026-3090/Desktop/lerobot-arm-control

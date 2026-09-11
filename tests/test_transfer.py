@@ -8,14 +8,23 @@ from rgbd.transfer import next_remote_episode_index, upload_episode
 
 class TransferTests(unittest.TestCase):
     def test_next_remote_episode_index(self):
-        result = type('Result', (), {'stdout': 'episode_000000\nepisode_000004\nlegacy\n'})()
+        result = type('Result', (), {'stdout': 'episode_000000\nepisode_000001\nepisode_000002\nlegacy\n'})()
         with patch('rgbd.transfer.subprocess.run', return_value=result) as run:
             index = next_remote_episode_index({
                 'ssh': 'itri2026@140.114.58.2',
                 'dataset_path': '/home/itri2026/lerobot_datasets',
-            }, 'pick_place')
-        self.assertEqual(index, 5)
+            }, 'pick_place', Path('/nonexistent'))
+        self.assertEqual(index, 3)
         self.assertIn('mkdir -p', run.call_args.args[0][2])
+
+    def test_next_remote_episode_index_reuses_gap(self):
+        result = type('Result', (), {'stdout': 'episode_000000\nepisode_000002\n'})()
+        with patch('rgbd.transfer.subprocess.run', return_value=result):
+            index = next_remote_episode_index({
+                'ssh': 'itri2026@140.114.58.2',
+                'dataset_path': '/home/itri2026/lerobot_datasets',
+            }, 'pick_place')
+        self.assertEqual(index, 1)
 
     def run_upload(self, remote_manifest):
         with tempfile.TemporaryDirectory() as tmp:

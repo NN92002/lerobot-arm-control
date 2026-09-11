@@ -11,7 +11,7 @@ from PyQt6.QtGui import QColor, QFont, QImage, QPainter, QPen
 from PyQt6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
     QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-    QMainWindow, QProgressBar, QPushButton, QScrollArea, QSizePolicy,
+    QMainWindow, QMessageBox, QProgressBar, QPushButton, QScrollArea, QSizePolicy,
     QSplitter, QTableWidget, QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget,
 )
 
@@ -348,7 +348,7 @@ class RecorderUI(QMainWindow):
         self.timer.start(100)
 
     def is_running(self):
-        return self.pending or self.device_state['recording']
+        return self.pending or self.device_state['recording'] or self.device_state.get('label_pending', False)
 
     def refresh_ports(self):
         if self.is_running():
@@ -437,6 +437,15 @@ class RecorderUI(QMainWindow):
         for name, button in self.camera_buttons.items():
             button.setText('Disconnect' if name in self.device_state['cameras'] else 'Connect')
             button.setEnabled(not locked)
+
+    def choose_sample_label(self, directory):
+        choice = QMessageBox.question(
+            self, 'Classify episode',
+            f'Was this episode a successful demonstration?\n\n{directory}\n\nYes = positive, No = negative',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        self.send('label', sample_label='positive' if choice == QMessageBox.StandardButton.Yes else 'negative')
 
     def start(self):
         if self.is_running():
@@ -530,6 +539,8 @@ class RecorderUI(QMainWindow):
                 self.clear_inactive()
             elif event == 'command_done':
                 self.pending = False
+            elif event == 'label_required':
+                self.choose_sample_label(value)
         self.update_controls()
         if not self.device_state['cameras'] and not self.device_state['sides']:
             self.feed_status.setText('IDLE / no connected devices')

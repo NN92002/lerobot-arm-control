@@ -44,6 +44,9 @@ class EpisodeDataset(torch.utils.data.Dataset):
             if not meta['complete']:
                 print(f'Skipping incomplete episode: {path.parent.name}')
                 continue
+            if meta.get('sample_label', 'positive') == 'negative':
+                print(f'Skipping negative episode: {path.parent.name}')
+                continue
             if meta['synthetic'] and not allow_mock:
                 raise ValueError('Synthetic data requires --allow-mock; never mix with real demonstrations')
             sides = meta.get('active_sides', ['left', 'right'])
