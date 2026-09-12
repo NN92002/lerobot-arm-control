@@ -259,12 +259,16 @@ class HardwareSession:
                 except Exception as error:
                     if self.shutdown.is_set() and isinstance(error, InterruptedError):
                         break
+                    preserve_devices = self.writer is None and bool(self.teleop)
                     self.teleop.clear()
-                    try:
-                        self.finish_recording('error')
-                    finally:
-                        cleanup_errors = self.close_devices()
-                    self.events.put(('status', f'Device/read/write failure: {error}. Devices disconnected. {"; ".join(cleanup_errors)}'))
+                    if preserve_devices:
+                        self.events.put(('status', f'Teleoperation stopped: {type(error).__name__}: {error}. Devices remain connected; check leader/follower ports and hardware status.'))
+                    else:
+                        try:
+                            self.finish_recording('error')
+                        finally:
+                            cleanup_errors = self.close_devices()
+                        self.events.put(('status', f'Device/read/write failure: {type(error).__name__}: {error}. Devices disconnected. {"; ".join(cleanup_errors)}'))
                     self.emit_state()
                 self.shutdown.wait(max(0, started+1/self.config['fps']-time.monotonic()))
         except Exception as error:
