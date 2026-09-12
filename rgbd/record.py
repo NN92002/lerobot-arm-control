@@ -54,7 +54,7 @@ def make_arms(config):
             common = dict(port=config[role]['ports'][side], id=f'{config[role]["id"]}_{side}',
                           calibration_dir=ROOT / 'calibration' / 'dual' / role, use_degrees=True)
             if role == 'robot':
-                arm = SOFollower(SOFollowerRobotConfig(**common, max_relative_target=config['max_relative_target']))
+                arm = SOFollower(SOFollowerRobotConfig(**common, max_relative_target=float(config['max_relative_target'])))
             else:
                 arm = SOLeader(SOLeaderTeleopConfig(**common))
             result[role, side] = arm
