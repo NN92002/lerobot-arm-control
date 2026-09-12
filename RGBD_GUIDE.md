@@ -15,6 +15,8 @@ Checkpoint /home/itri2026/lerobot_checkpoints
 
 實機 GUI 每完成一個 episode，會先跳出判定視窗。選擇後即在背景以 checksum 上傳並驗證檔案清單；驗證成功才刪除本機 episode。上傳期間可以立即開始下一個 episode。上傳失敗、中斷錄製與 mock 錄製都會保留本機資料。`negative` episode 會上傳保存，但訓練入口會自動跳過。資料集名稱取自 GUI 的 output 資料夾名稱。
 
+按下 `Start Recording` 後會先倒數 3 秒。一般 `Stop Recording` 不會停止 Teleop；`Emergency Stop` 才會停止 Teleop 並斷開手臂。
+
 已查到本機 RealSense D435I（序號 `944122072848`），已填入設定。手臂已確認為兩組 SO-101；四個串列埠與 URDF 尚待填寫；未執行實機手臂控制或正式示範訓練。
 
 ## 環境

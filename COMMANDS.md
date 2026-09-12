@@ -183,6 +183,8 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 `/home/itri2026/lerobot_datasets/<資料集名稱>/<episode>`。程式會先以 checksum 同步，
 錄製完成後先選擇 `positive` 或 `negative`，接著背景上傳並比對遠端檔案清單與大小；只有驗證成功才刪除本機 episode。
 上傳在背景執行，可以立即開始下一個 episode；關閉 GUI 時會等待背景上傳完成。
+
+GUI 按 `Start Recording` 後會倒數 3 秒才建立 episode。`Stop Recording` 只停止目前回合並保持 Teleop，方便直接錄下一回合；遇到危險或需要立即停止命令時才按 `Emergency Stop`，它會停止 Teleop 並斷開手臂。
 中斷錄製、mock 錄製或上傳失敗時，本機檔案會保留。訓練入口只會載入 `positive` episode，
 `negative` 仍保留在伺服器供檢查。
 

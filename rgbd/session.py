@@ -116,8 +116,8 @@ class HardwareSession:
         if self.writer is None:
             return
         writer, self.writer = self.writer, None
-        # Recording completion/stop also stops issuing teleoperation targets.
-        self.teleop.clear()
+        if self.mock or reason not in (None, 'manual'):
+            self.teleop.clear()
         complete = (reason is None and writer.meta['frames'] == self.target_frames) or (
             reason == 'manual' and not self.mock and writer.meta['frames'] >= 2
         )
@@ -150,6 +150,16 @@ class HardwareSession:
             self.connect(**args)
         elif operation == 'disconnect':
             self.disconnect_one(**args)
+        elif operation == 'emergency_stop':
+            self.teleop.clear()
+            if self.writer:
+                self.finish_recording('error')
+            cleanup_errors = self.close_devices()
+            message = 'Emergency stop: teleoperation stopped and arm devices disconnected.'
+            if cleanup_errors:
+                message += ' ' + '; '.join(cleanup_errors)
+            self.events.put(('status', message))
+            self.emit_state()
         elif operation == 'teleop':
             if self.writer:
                 raise ValueError('Stop recording before changing teleoperation')

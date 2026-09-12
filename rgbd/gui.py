@@ -112,6 +112,9 @@ class RecorderUI(QMainWindow):
         self.config_path = str(config)
         self.closing = False
         self.pending = False
+        self.countdown_remaining = 0
+        self.countdown_timer = QTimer(self)
+        self.countdown_timer.timeout.connect(self.countdown_tick)
         self.detected_ports = None
         self.last_frame_at = None
         self.depth_stats = []
@@ -329,8 +332,13 @@ class RecorderUI(QMainWindow):
         self.stop_button.setObjectName('stop')
         self.stop_button.clicked.connect(self.request_stop)
         self.stop_button.setEnabled(False)
+        self.emergency_button = QPushButton('Emergency Stop')
+        self.emergency_button.setObjectName('emergency')
+        self.emergency_button.clicked.connect(self.emergency_stop)
+        self.emergency_button.setEnabled(False)
         action_row.addWidget(self.start_button)
         action_row.addWidget(self.stop_button)
+        action_row.addWidget(self.emergency_button)
         footer_layout.addLayout(action_row)
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
@@ -338,7 +346,7 @@ class RecorderUI(QMainWindow):
         self.progress.setTextVisible(False)
         self.progress.setFixedHeight(6)
         footer_layout.addWidget(self.progress)
-        footer_layout.addWidget(label('Stop Recording stops teleop; connections and preview stay on. Disconnect to release devices. Not an emergency stop.', 'muted', True))
+        footer_layout.addWidget(label('Stop Recording keeps teleop active. Emergency Stop disconnects arm devices and stops commands.', 'muted', True))
         layout.addWidget(footer)
         self.session = HardwareSession(cfg)
         self.refresh_ports()
@@ -348,7 +356,8 @@ class RecorderUI(QMainWindow):
         self.timer.start(100)
 
     def is_running(self):
-        return self.pending or self.device_state['recording'] or self.device_state.get('label_pending', False)
+        return (self.pending or self.countdown_remaining > 0 or self.device_state['recording']
+            or self.device_state.get('label_pending', False))
 
     def refresh_ports(self):
         if self.is_running():
@@ -424,6 +433,7 @@ class RecorderUI(QMainWindow):
         self.mock_check.setEnabled(not locked and not active)
         self.start_button.setEnabled(not locked and active)
         self.stop_button.setEnabled(self.device_state['recording'] and not self.closing)
+        self.emergency_button.setEnabled(active and not self.pending and not self.closing)
         for (role, side), box in self.port_boxes.items():
             box.setEnabled(not locked and side not in self.device_state['sides'])
         for side, button in self.arm_buttons.items():
@@ -453,6 +463,17 @@ class RecorderUI(QMainWindow):
         if not self.path_entry.text().strip():
             self.status.setText('Set an output folder')
             return
+        self.countdown_remaining = 3
+        self.status.setText('Recording starts in 3...')
+        self.update_controls()
+        self.countdown_timer.start(1000)
+
+    def countdown_tick(self):
+        self.countdown_remaining -= 1
+        if self.countdown_remaining > 0:
+            self.status.setText(f'Recording starts in {self.countdown_remaining}...')
+            return
+        self.countdown_timer.stop()
         self.session.stop_recording.clear()
         self.progress.setRange(0, int(self.duration.value()*self.session.config['fps']))
         self.progress.setValue(0)
@@ -461,7 +482,12 @@ class RecorderUI(QMainWindow):
     def request_stop(self):
         self.session.stop_recording.set()
         self.stop_button.setEnabled(False)
-        self.status.setText('Stopping recording and teleoperation...')
+        self.status.setText('Stopping recording; teleoperation remains active...')
+
+    def emergency_stop(self):
+        self.countdown_timer.stop()
+        self.countdown_remaining = 0
+        self.send('emergency_stop')
 
     def closeEvent(self, event):
         if self.session.thread.is_alive():

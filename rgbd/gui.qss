@@ -19,6 +19,8 @@ QPushButton:pressed { background: #16253a; }
 QPushButton#primary { background: #4298ed; color: #061628; border-color: #62aff7; padding: 11px 24px; }
 QPushButton#primary:hover { background: #73b6f6; }
 QPushButton#stop { color: #f3b6b6; background: #382731; border-color: #68414e; padding: 11px 22px; }
+QPushButton#emergency { color: #fff0f0; background: #9b3030; border-color: #d85d5d; padding: 11px 18px; }
+QPushButton#emergency:hover { background: #c44242; }
 QPushButton:disabled, QPushButton#primary:disabled, QPushButton#stop:disabled { background: #182232; color: #63748d; border-color: #28364b; }
 QLineEdit:disabled, QComboBox:disabled, QDoubleSpinBox:disabled { color: #687991; border-color: #26344a; }
 QCheckBox { background: transparent; spacing: 9px; padding: 4px 0; }

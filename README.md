@@ -16,6 +16,9 @@
 使用 `configs/rgbd.json` 啟動實機 GUI 時，每個完整 episode 錄完會先讓你選擇
 `positive` 或 `negative`，接著在背景以 `rsync --checksum` 上傳並驗證遠端檔案，最後才刪除本機 episode。
 上傳期間可以直接開始下一個 episode，不需要等待前一回合傳完。
+
+按 `Start Recording` 後會倒數 3 秒才開始收資料；一般 `Stop Recording` 只結束目前回合，Teleop 會保持運作。
+只有 `Emergency Stop` 會停止 Teleop 並斷開手臂。
 上傳失敗或中斷錄製會保留本機檔案；訓練時會自動跳過 `negative` episode。
 
 ```bash
