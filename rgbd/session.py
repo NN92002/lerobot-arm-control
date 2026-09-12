@@ -26,6 +26,7 @@ class HardwareSession:
         self.mock = False
         self.writer = None
         self.pending_episode = None
+        self.upload_threads = []
         self.target_frames = 0
         self.last_recording = {'frames': 0, 'elapsed': 0., 'fps': 0.}
         self.thread = threading.Thread(target=self.loop, daemon=False)
@@ -117,7 +118,9 @@ class HardwareSession:
         writer, self.writer = self.writer, None
         # Recording completion/stop also stops issuing teleoperation targets.
         self.teleop.clear()
-        complete = reason is None and writer.meta['frames'] == self.target_frames
+        complete = (reason is None and writer.meta['frames'] == self.target_frames) or (
+            reason == 'manual' and not self.mock and writer.meta['frames'] >= 2
+        )
         writer.close(complete, reason)
         message = f'{"Recording complete; choose sample label" if complete else "Incomplete episode kept"}: {writer.directory}. Teleop stopped; devices remain connected.'
         if complete and not self.mock:
@@ -125,6 +128,22 @@ class HardwareSession:
             self.events.put(('label_required', str(writer.directory)))
         self.events.put(('status', message))
         self.emit_state()
+
+    def upload_labeled_episode(self, directory, sample_label):
+        server = self.config.get('server', {})
+        try:
+            remote_directory = upload_episode(directory, server)
+            import shutil
+            shutil.rmtree(directory)
+            message = f'{sample_label.title()} sample uploaded and removed locally: {remote_directory}'
+        except Exception as error:
+            message = f'{sample_label.title()} sample upload failed; local episode kept at {directory}: {error}'
+        self.events.put(('status', message))
+
+    def start_episode_upload(self, directory, sample_label):
+        thread = threading.Thread(target=self.upload_labeled_episode, args=(directory, sample_label), daemon=False)
+        self.upload_threads.append(thread)
+        thread.start()
 
     def handle(self, operation, args):
         if operation == 'connect':
@@ -144,8 +163,6 @@ class HardwareSession:
         elif operation == 'record':
             if self.writer:
                 raise ValueError('Already recording')
-            if self.pending_episode:
-                raise ValueError('Label the completed episode before recording another')
             if not self.resources:
                 raise ValueError('Connect at least one arm pair or camera first')
             cfg = self.selected()
@@ -180,14 +197,8 @@ class HardwareSession:
             write_json(meta_path, meta)
             server = self.config.get('server', {})
             if server.get('auto_upload', False):
-                self.events.put(('status', f'{sample_label.title()} sample: {directory}. Uploading...'))
-                try:
-                    remote_directory = upload_episode(directory, server)
-                    import shutil
-                    shutil.rmtree(directory)
-                    message = f'{sample_label.title()} sample uploaded and removed locally: {remote_directory}'
-                except Exception as error:
-                    message = f'{sample_label.title()} sample upload failed; local episode kept at {directory}: {error}'
+                self.start_episode_upload(directory, sample_label)
+                message = f'{sample_label.title()} sample queued for upload: {directory}'
             else:
                 message = f'{sample_label.title()} sample saved locally: {directory}'
             self.pending_episode = None
@@ -211,7 +222,7 @@ class HardwareSession:
                 started = time.monotonic()
                 if self.stop_recording.is_set():
                     try:
-                        self.finish_recording('user')
+                        self.finish_recording('manual')
                     finally:
                         self.stop_recording.clear()
                 try:
@@ -279,5 +290,7 @@ class HardwareSession:
             except Exception as error:
                 self.events.put(('status', f'Could not finalize episode: {error}'))
             self.close_devices()
+            for thread in self.upload_threads:
+                thread.join()
             self.emit_state()
             self.events.put(('closed', None))
