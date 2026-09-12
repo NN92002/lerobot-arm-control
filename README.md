@@ -30,7 +30,7 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 
 ```bash
 ./server.sh deploy
-./server.sh train recordings pick_place_v1 --steps 20000 --batch-size 8 --device cuda
+./server.sh train recordings pick_place_v1 --steps 100 --batch-size 8 --device cuda
 ```
 
 正式錄製不需要手動執行 `server.sh sync`；該命令只用於手動補傳既有資料。

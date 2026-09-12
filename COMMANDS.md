@@ -19,7 +19,7 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 # 伺服器資料集名稱由 --output 的資料夾名稱決定，例如 recordings
 # 在伺服器上訓練，checkpoint 寫入 /home/itri2026/lerobot_checkpoints
 ./server.sh train recordings pick_place_v1 \
-  --steps 20000 --batch-size 8 --device cuda
+  --steps 100 --batch-size 8 --device cuda
 ```
 
 `run.sh` 使用 `.conda/bin/python`，清除繼承的 `PYTHONPATH`、`PYTHONHOME`，停用使用者 site-packages，並將工作目錄設為專案目錄。即使目前啟用 base 或其他 Conda 環境，也會使用這個專案的 Python。後續加裝套件請使用 `./run.sh -m pip ...`。
@@ -98,8 +98,8 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 
 ```bash
 # 讀取設定中的 RealSense，檢查 RGB、深度與有效比例；不連接手臂
-./run.sh -m rgbd.camera --config configs/rgbd.json
-```
+./server.sh train recordings pick_place_v1 \
+  --steps 100 --batch-size 8 --device cuda
 
 ## 6. UI 獨立硬體控制與錄製
 
@@ -167,13 +167,13 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 ```bash
 # 將本機資料集同步到伺服器的 /home/itri2026/lerobot_datasets/pick_place
 ./server.sh sync data/pick_place pick_place
-
-# 第一次使用或程式有更新時，同步程式（不包含本機 .conda）
+./server.sh train pick_place pick_place_v1 \
+  --steps 100 --batch-size 8 --device cuda
 ./server.sh deploy
 
 # 在伺服器上訓練，checkpoint 存到 /home/itri2026/lerobot_checkpoints/pick_place_v1
 ./server.sh train pick_place pick_place_v1 \
-  --steps 20000 --batch-size 8 --device cuda
+  --steps 100 --batch-size 8 --device cuda
 ```
 
 `server.sh` 需要本機已安裝 `ssh`、`rsync`，並且 SSH 金鑰登入伺服器已可用。可用
@@ -203,10 +203,10 @@ GUI 按 `Start Recording` 後會倒數 3 秒才建立 episode。`Stop Recording`
 # 以下只適用於資料仍在本機、且要做離線除錯時：
 ./run.sh -m rgbd.train --config configs/rgbd.json \
   --data data/pick_place --output outputs/pick_place_v1 \
-  --steps 20000 --batch-size 8 --device cuda
+  --steps 100 --batch-size 8 --device cuda
 ```
 
-無可用 GPU 時可將 `--device cuda` 改為 `--device cpu`，速度較慢。`--output` 必須是新目錄。其他選項包括 `--image-size 96`、`--max-depth-m 3`、`--save-every 1000`、`--seed 42`。
+無可用 GPU 時可將 `--device cuda` 改為 `--device cpu`，速度較慢。測試可用 `--steps 100`，正式訓練再調大。`--output` 必須是新目錄；只保存 `checkpoint_best`（最低 training loss）與 `checkpoint_last`，不保存中間 checkpoint。
 
 訓練維度會依資料自動選擇單組（action 6／state 15）或雙組（12／30）。左右單組即使維度相同也不能混用；推論會核對 checkpoint 的關節名稱。此影像條件模型要求至少一台相機與一組已啟動遙控的手臂；純相機、純手臂及未啟動遙控的觀測錄製仍可保存／檢查，但不適用此訓練入口。
 
@@ -216,7 +216,7 @@ GUI 按 `Start Recording` 後會倒數 3 秒才建立 episode。`Stop Recording`
 
 ```bash
 ./run.sh -m rgbd.predict --config configs/rgbd.json \
-  --checkpoint outputs/pick_place_v1/checkpoint_020000 \
+  --checkpoint outputs/pick_place_v1/checkpoint_best \
   --data data/pick_place --output outputs/predicted_actions.json
 ```
 

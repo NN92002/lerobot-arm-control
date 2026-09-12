@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--allow-mock', action='store_true')
     parser.add_argument('--small', action='store_true', help='Small temporal U-Net for pipeline checks')
     parser.add_argument('--seed', type=int, default=42)
-    parser.add_argument('--save-every', type=int, default=1000)
+    parser.add_argument('--save-every', type=int, default=1000, help='Deprecated; only best and last checkpoints are saved')
     args = parser.parse_args()
     load_config(args.config)
     if args.steps < 1 or args.batch_size < 1 or args.save_every < 1:
@@ -68,6 +68,14 @@ def main():
     print(f'{len(dataset.episodes)} episodes, {len(dataset)} windows; RGB and depth keys: {list(inputs)[1:]}', flush=True)
     policy.train()
     iterator = iter(loader)
+    best_loss = float('inf')
+
+    def save_checkpoint(name, step, loss_value):
+        checkpoint = args.output / name
+        policy.save_pretrained(checkpoint)
+        write_json(checkpoint / 'preprocessing.json', preprocessing)
+        torch.save({'step': step, 'optimizer': optimizer.state_dict(), 'loss': loss_value}, checkpoint / 'training_state.pt')
+
     for step in range(1, args.steps + 1):
         try:
             batch = next(iterator)
@@ -84,11 +92,11 @@ def main():
         optimizer.step()
         if step == 1 or step % 10 == 0 or step == args.steps:
             print(f'step={step}/{args.steps} loss={loss.item():.6f}', flush=True)
-        if step % args.save_every == 0 or step == args.steps:
-            checkpoint = args.output / f'checkpoint_{step:06d}'
-            policy.save_pretrained(checkpoint)
-            write_json(checkpoint / 'preprocessing.json', preprocessing)
-            torch.save({'step': step, 'optimizer': optimizer.state_dict(), 'loss': loss.item()}, checkpoint / 'training_state.pt')
+        loss_value = loss.item()
+        if loss_value < best_loss:
+            best_loss = loss_value
+            save_checkpoint('checkpoint_best', step, loss_value)
+    save_checkpoint('checkpoint_last', args.steps, loss_value)
     print(f'Training complete: {args.output.resolve()}', flush=True)
 
 

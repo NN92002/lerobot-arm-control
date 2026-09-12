@@ -72,7 +72,7 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 ```bash
 ./server.sh deploy
 ./server.sh train recordings pick_place_v1 \
-  --steps 20000 --batch-size 8 --device cuda
+  --steps 100 --batch-size 8 --device cuda
 ```
 
 `rgbd.record` 終端模式仍可用於進階除錯，但不會走 GUI 的自動逐 episode 上傳流程；正式收集資料請使用 GUI。
@@ -83,8 +83,8 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 
 | 資料欄位 | 內容 |
 |---|---|
-| `joints` | 每個啟用組 5 關節角度＋夾爪；單組 6、雙組 12 維 |
-| `ee_transform` | 左右 4×4 末端變換矩陣，位置公尺 |
+./server.sh train recordings pick_place_v1 \
+  --steps 100 --batch-size 8 --device cuda
 | `state` | 關節值＋每側 XYZ 與旋轉矩陣前兩欄；單組 15、雙組 30 維 |
 | `requested_action` | 從主臂讀出的原始目標 |
 | `action` | 實際送出的單組 6／雙組 12 維目標；未啟動遙控時為 NaN，並以 `action_valid=false` 標記 |
@@ -106,12 +106,12 @@ RGB／深度從同一 RealSense frameset 取得，使用 SDK 對齊深度到 RGB
 ```bash
 ./server.sh deploy
 ./server.sh train recordings pick_place_v1 \
-  --steps 20000 --batch-size 8 --device cuda
+  --steps 100 --batch-size 8 --device cuda
 ```
 
 伺服器訓練等同於在伺服器執行 `rgbd.train`，資料來源是
 `/home/itri2026/lerobot_datasets/recordings`，checkpoint 寫入
-`/home/itri2026/lerobot_checkpoints/pick_place_v1`。本機 `data/` 與 `outputs/` 只保留給離線除錯，不是正式資料路徑。
+`/home/itri2026/lerobot_checkpoints/pick_place_v1`，只保存 `checkpoint_best`（最低 training loss）與 `checkpoint_last`。本機 `data/` 與 `outputs/` 只保留給離線除錯，不是正式資料路徑。
 
 此訓練入口要求至少一組手臂及一台相機，且全部已錄製手臂都有遙控動作標籤；純影像、純手臂或只讀回授資料可錄製／檢查，但不適用本影像条件訓練入口。不同手臂組合不可混訓。
 
@@ -127,7 +127,7 @@ state/action 依訓練資料 min/max 正規化，預設影像縮為 96×96，不
 
 ```bash
 ./run.sh -m rgbd.predict \
-  --checkpoint /home/itri2026/lerobot_checkpoints/pick_place_v1/checkpoint_020000 \
+  --checkpoint /home/itri2026/lerobot_checkpoints/pick_place_v1/checkpoint_best \
   --data /home/itri2026/lerobot_datasets/recordings --output predicted_actions.json
 ```
 
@@ -151,3 +151,6 @@ state/action 依訓練資料 min/max 正規化，預設影像縮為 96×96，不
 ## 即時觀測介面
 
 執行 `./run.sh -m rgbd.gui` 開啟錄製視窗，或加 `--mock` 使用合成資料測試。啟動方式、顯示內容與停止行為請見 [README 的即時錄製介面](README.md#即時錄製介面)。原有 `./run.sh -m rgbd.record` 終端錄製方式仍可使用。
+
+./server.sh train pick_place pick_place_v1 \
+  --steps 100 --batch-size 8 --device cuda
