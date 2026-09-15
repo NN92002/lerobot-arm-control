@@ -8,18 +8,18 @@
   "robot": {
     "id": "dual_robot",
     "ports": {
-      "left": "/dev/serial/by-id/REPLACE_robot_left",
-      "right": "/dev/serial/by-id/REPLACE_robot_right"
+      "left": "/dev/serial/by-id/usb-1a86_USB_Single_Serial_5B42073958-if00",
+      "right": "/dev/serial/by-id/usb-1a86_USB_Single_Serial_5B42138546-if00"
     }
   },
   "teleop": {
     "id": "dual_teleop",
     "ports": {
-      "left": "/dev/serial/by-id/REPLACE_teleop_left",
-      "right": "/dev/serial/by-id/REPLACE_teleop_right"
+      "left": "/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AE7044528-if00",
+      "right": "/dev/serial/by-id/usb-1a86_USB_Single_Serial_5AE7045028-if00"
     }
   },
-  "task": "請改成你要示範的任務描述",
+  "task": "Dual-arm SO-101 teleoperation demonstration",
   "server": {
     "ssh": "itri2026@140.114.58.2",
     "dataset_path": "/home/itri2026/lerobot_datasets",
@@ -38,7 +38,7 @@
   ],
   "kinematics": {
     "left": {
-      "urdf": "REPLACE_WITH_ABSOLUTE_URDF_PATH",
+      "urdf": "/home/itri2026-3090/so100_ws/src/so101_description/urdf/so101_new_calib.urdf",
       "base_link": "base_link",
       "tip_link": "gripper_frame_link",
       "output_frame": "left_base",
@@ -97,7 +97,7 @@
       }
     },
     "right": {
-      "urdf": "REPLACE_WITH_ABSOLUTE_URDF_PATH",
+      "urdf": "/home/itri2026-3090/so100_ws/src/so101_description/urdf/so101_new_calib.urdf",
       "base_link": "base_link",
       "tip_link": "gripper_frame_link",
       "output_frame": "right_base",

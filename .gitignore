@@ -4,3 +4,4 @@ calibration/
 data/
 outputs/
 .conda/
+checkpoints/

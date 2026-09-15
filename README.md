@@ -6,12 +6,136 @@
 
 ## 目前正式流程
 
-資料錄製在本機硬體上執行，伺服器負責保存資料與訓練：
+資料錄製在本機硬體上執行，伺服器負責保存資料與訓練。以下是目前建議的完整流程；除標示
+「伺服器」的指令外，都在本機執行。
 
-- SSH：`itri2026@140.114.58.2`
-- 資料：`/home/itri2026/lerobot_datasets`
-- Checkpoint：`/home/itri2026/lerobot_checkpoints`
-- 程式同步位置：`/home/itri2026/lerobot-arm-control`
+### 1. 初始化與確認接口
+
+```bash
+cd /home/itri2026-3090/Desktop/lerobot-arm-control
+./run.sh control.py ports
+```
+
+在資料蒐集 GUI 的 `Rescan Ports` 找到接口並按 `Save Ports`。四個接口對應如下：
+
+| 角色 | 設定欄位 |
+|---|---|
+| 左主臂 Leader | `teleop.ports.left` |
+| 左從臂 Follower | `robot.ports.left` |
+| 右主臂 Leader | `teleop.ports.right` |
+| 右從臂 Follower | `robot.ports.right` |
+
+確認 `configs/rgbd.json` 中的相機、URDF、link 與 joint mapping 都已設定。
+
+### 2. 校正四支手臂
+
+先預覽，再執行實際校正：
+
+```bash
+./run.sh control.py calibrate-teleop --config configs/rgbd.json
+./run.sh control.py calibrate-robot --config configs/rgbd.json
+
+./run.sh control.py calibrate-teleop --config configs/rgbd.json --run
+./run.sh control.py calibrate-robot --config configs/rgbd.json --run
+```
+
+校正檔會存到 `calibration/dual/teleop/` 與 `calibration/dual/robot/`。
+
+### 3. 資料蒐集
+
+```bash
+./run.sh -m rgbd.gui \
+	--config configs/rgbd.json \
+	--output data/recordings
+```
+
+GUI 操作順序：
+
+1. 連接相機。
+2. 連接左、右 Arm pair。
+3. 左、右兩側按 `Start Teleop`。
+4. 按 `Start Recording`，完成示範後按 `Stop Recording`。
+5. 選擇 `positive` 或 `negative` 標籤。
+
+完整 episode 會自動上傳至伺服器的
+`/home/itri2026/lerobot_datasets/recordings`。只有 `positive` episode 會用於訓練。
+上傳失敗或中斷的資料會保留在本機，不要直接刪除。
+
+檢查本地資料：
+
+```bash
+./run.sh -m rgbd.inspect data/recordings
+```
+
+若使用終端錄製而非 GUI，需手動同步資料：
+
+```bash
+./run.sh -m rgbd.record --config configs/rgbd.json \
+	--output data/recordings --episodes 10 --seconds 30
+./server.sh sync data/recordings recordings
+```
+
+### 4. 訓練 Diffusion Policy（伺服器）
+
+程式有更新時，先同步專案：
+
+```bash
+./server.sh deploy
+```
+
+使用伺服器上由 GUI 自動上傳的 `recordings` 資料集開始訓練：
+
+```bash
+./server.sh train recordings task1_dp_v5 \
+	--steps 10000 --batch-size 8 --device cuda
+```
+
+訓練完成後，checkpoint 位於伺服器：
+
+`/home/itri2026/lerobot_checkpoints/task1_dp_v5`
+
+### 5. 下載 checkpoint 到本機
+
+```bash
+mkdir -p checkpoints/task1_dp_v5
+rsync -av --partial --progress \
+	itri2026@140.114.58.2:/home/itri2026/lerobot_checkpoints/task1_dp_v5/ \
+	checkpoints/task1_dp_v5/
+```
+
+確認至少存在：
+
+```text
+checkpoints/task1_dp_v5/model/checkpoint_best/config.json
+checkpoints/task1_dp_v5/model/checkpoint_best/model.safetensors
+checkpoints/task1_dp_v5/model/checkpoint_best/preprocessing.json
+```
+
+### 6. 部署模型到手臂
+
+```bash
+./run.sh -m rgbd.policy_gui --config configs/rgbd.json
+```
+
+GUI 操作順序：
+
+1. 選擇本地 checkpoint，按 `Load Checkpoint`。
+2. 選擇左右 follower port，必要時按 `Rescan Ports`，再按 `Save Ports`。
+3. 按 `Start Camera`。
+4. 按 `Start Left Follower` 與 `Start Right Follower`。
+5. 每支手臂會讓 `shoulder_pan` 小幅移動約 2 度後回位，用來確認左右接口沒有接錯。
+6. 確認周圍安全後按 `Start Policy`。
+
+`Stop Policy` 會停止送出動作但保持連線；`EMERGENCY STOP` 會停止推論並斷開相機與
+手臂。軟體急停不是硬體電源級急停，實機操作仍須保留實體斷電措施。
+
+### 7. 無硬體測試
+
+```bash
+QT_QPA_PLATFORM=offscreen ./run.sh -m unittest discover -s tests -v
+./run.sh -m rgbd.gui --mock --output data/mock_ui
+```
+
 
 使用 `configs/rgbd.json` 啟動實機 GUI 時，每個完整 episode 錄完會先讓你選擇
 `positive` 或 `negative`，接著在背景以 `rsync --checksum` 上傳並驗證遠端檔案，最後才刪除本機 episode。
@@ -40,9 +164,6 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 使用專案獨立環境內 LeRobot 的控制入口，支援 SO-100／SO-101 單組主從、雙組主從遙控。硬體已確認為兩組 SO-101 主從手臂。雙組需要兩支 leader（主臂）及兩支 follower（從臂），共四支手臂。此專案不是無主臂的自動軌跡控制。
 
 找到的原始程式：
-- `src/lerobot/scripts/lerobot_teleoperate.py`：控制迴圈與雙臂命令範例。
-- `src/lerobot/robots/bi_so_follower/bi_so_follower.py`：拆分左右動作並依序送往兩支從臂。
-- `src/lerobot/teleoperators/bi_so_leader/bi_so_leader.py`：讀取左右主臂。
 
 左右臂在同一迴圈依序通訊，並非硬體級同時觸發；設定 30 Hz 是目標頻率，實際速度取決於裝置。
 
@@ -108,3 +229,20 @@ cd /home/itri2026-3090/Desktop/lerobot-arm-control
 `./run.sh -m unittest discover -s tests -v` 驗證指令產生、校正角色隔離及重複連接埠拒絕。預覽與測試不會連接硬體。
 
 目前未偵測到 USB 串列手臂裝置，尚未做實機校正與動作測試。依賴由專案 `.conda` 環境提供，重建方式請見 COMMANDS.md。
+
+## 10. 實機 Diffusion Policy 控制
+
+指定的伺服器 checkpoint 已下載至 `checkpoints/task1_dp_v4`。啟動推論介面：
+
+```bash
+./run.sh -m rgbd.policy_gui --config configs/rgbd.json
+```
+
+介面可從本地下拉選擇 checkpoint，也可從伺服器下載其他 checkpoint。按下左右
+`Start Follower` 時，該手臂會先讓 `shoulder_pan` 以校正後的馬達正方向移動約 2 度，
+停留後回到原位，方便確認 USB 接口與左右手臂沒有接錯；完成後才算連線成功。左右手臂
+若為鏡像安裝，視覺上的順時針方向可能不同，請以實際手臂運動確認方向。
+
+請依序載入模型、啟動相機、啟動左右 follower，再按 `Start Policy`。`Stop Policy` 只
+停止送出動作並保持連線；`EMERGENCY STOP` 會停止推論並斷開相機與兩支 follower。
+軟體急停不是硬體級電源急停，實機測試仍需保留可直接切斷馬達電源的措施。
